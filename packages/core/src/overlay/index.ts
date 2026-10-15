@@ -1,4 +1,4 @@
-import { PVE_OVERLAY_ATTR as LAYER_ATTR } from '../attrs.js'
+import { createOverlayHost } from './host.js'
 import { ACCENT, ACCENT_FILL, ACCENT_FILL_SOFT } from './theme.js'
 
 const LABEL_HEIGHT = 20
@@ -47,8 +47,9 @@ export type OverlayHoverTarget = {
 }
 
 /**
- * Single fixed, pointer-events:none layer appended to <body>. Site CSS is
- * never mutated; chips re-enable pointer events locally. The layer is
+ * Single fixed, pointer-events:none layer inside a shadow root hosted by
+ * one element appended to <body>. Site CSS is never mutated and cannot style
+ * the overlay; chips re-enable pointer events locally. The layer is
  * position:fixed so getBoundingClientRect viewport coords map 1:1 — no scroll
  * offset math, and Live Preview's iframe zoom scales everything together.
  */
@@ -57,6 +58,7 @@ export class OverlayRenderer {
   private flashBox: HTMLDivElement | null = null
   private flashTarget: Element | null = null
   private flashTimer: null | ReturnType<typeof setTimeout> = null
+  private host: HTMLElement | null = null
   private hoverTarget: OverlayHoverTarget | null = null
   private label: HTMLDivElement | null = null
   private layer: HTMLDivElement | null = null
@@ -95,18 +97,28 @@ export class OverlayRenderer {
     }
   }
 
-  /** Whether a node belongs to the overlay's own UI (chips, buttons, …). */
+  /**
+   * Whether a node belongs to the overlay's own UI (chips, buttons, …).
+   * Document-level events from the shadow tree are retargeted to the host.
+   */
   layerContains(node: unknown): boolean {
-    return node instanceof Node && this.layer !== null && this.layer.contains(node)
+    return (
+      node instanceof Node &&
+      this.layer !== null &&
+      this.host !== null &&
+      (node === this.host || this.layer.contains(node))
+    )
   }
 
   mount(doc: Document = document): void {
     if (this.layer) {
       return
     }
+    const { host, root } = createOverlayHost(doc)
     const layer = doc.createElement('div')
-    layer.setAttribute(LAYER_ATTR, '')
-    layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483000;'
+    layer.setAttribute('data-pve-layer', '')
+    layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;'
+    root.appendChild(layer)
 
     const box = doc.createElement('div')
     box.setAttribute('data-pve-hover-box', '')
@@ -139,7 +151,8 @@ export class OverlayRenderer {
       `background:${ACCENT_FILL};border-radius:2px;`
     layer.appendChild(flashBox)
 
-    doc.body.appendChild(layer)
+    doc.body.appendChild(host)
+    this.host = host
     this.layer = layer
     this.box = box
     this.label = label
@@ -246,10 +259,10 @@ export class OverlayRenderer {
   }
 
   unmount(): void {
-    if (!this.layer) {
+    if (!this.layer || !this.host) {
       return
     }
-    const doc = this.layer.ownerDocument
+    const doc = this.host.ownerDocument
     const win = doc.defaultView ?? window
     win.removeEventListener('resize', this.scheduleRefresh)
     doc.removeEventListener('scroll', this.scheduleRefresh, { capture: true })
@@ -268,7 +281,8 @@ export class OverlayRenderer {
       this.flashTimer = null
     }
     this.flashTarget = null
-    this.layer.remove()
+    this.host.remove()
+    this.host = null
     this.layer = null
     this.box = null
     this.label = null

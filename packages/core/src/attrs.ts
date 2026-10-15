@@ -1,4 +1,4 @@
-/** Marks the overlay layer root — its subtree is SDK UI, never site content. */
+/** Marks the overlay host element; its shadow root contains SDK UI, never site content. */
 export const PVE_OVERLAY_ATTR = 'data-pve-overlay'
 
 export const PVE_ATTR = {
