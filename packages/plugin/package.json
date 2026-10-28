@@ -64,13 +64,13 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@payloadcms/ui": "^3.85.2",
+    "@payloadcms/ui": "^3.91.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.43",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "next": "^16.2.6",
-    "payload": "^3.85.2",
+    "next": "^16.4.2",
+    "payload": "^3.91.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "^5.9.3"
